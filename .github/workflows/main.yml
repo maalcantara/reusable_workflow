@@ -1,0 +1,9 @@
+name: Main - My Starter Workflow
+
+on:
+  workflow_dispatch: # executar manualmente no actions
+
+jobs:
+
+  call-workflow-in-local-repo:
+    uses: ./.github/workflows/reusable-workflow-1.yml

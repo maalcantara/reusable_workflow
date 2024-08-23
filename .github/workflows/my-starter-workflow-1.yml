@@ -1,4 +1,4 @@
-name: Main - My Starter Workflow
+name: My Starter Workflow 1
 
 on:
   workflow_dispatch: # executar manualmente no actions

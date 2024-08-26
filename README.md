@@ -19,7 +19,7 @@ call-workflow-in-local-repo:
 Este é o workflow reutilizável, ele está configurado para ser chamado por outros workflows através do evento `workflow_call`.
 
 ## Reutilizando workflows em repositórios diferentes.
-◻️ Neste exemplo utilizei o repo [dotnet-webapi](https://github.com/maalcantara/dotnet-webapi).
+◻️ Neste exemplo utilizei o repositório [dotnet-webapi](https://github.com/maalcantara/dotnet-webapi).
 
 ```
 {owner}/{repo}/.github/workflows/{filename}@{ref}
@@ -32,3 +32,9 @@ Este é o workflow reutilizável, ele está configurado para ser chamado por out
 
 - **Commit SHA:** usar o hash de um commit específico. Ex `uses: maalcantara/reusable_workflow/.github/workflows/setup-dotnet-sdk.yml@8151835`
 
+## Workflows
+| Pipeline yml       | Resumo          | Repositórios que o utilizam|
+|-------------------|-----------------|-------------------|
+| [my-starter-workflow-1](https://github.com/maalcantara/reusable_workflow/blob/main/.github/workflows/my-starter-workflow-1.yml) | Apenas teste, reutiliza a pipeline abaixo.| |
+| [reusable-workflow-1](https://github.com/maalcantara/reusable_workflow/blob/main/.github/workflows/reusable-workflow-1.yml) | Apenas teste, comando `echo "I am a Reusable Workflow One".| |
+| [setup-dotnet-sdk](https://github.com/maalcantara/reusable_workflow/blob/main/.github/workflows/setup-dotnet-sdk.yml) | Instala o SDK do .NET Core, e precisa de um imput especificando qual versão do dotnet para instalar.| [DevOps_Challenge](https://github.com/maalcantara/DevOps_Challenge/tree/reusable-workflows), [dotnet-webapi](https://github.com/maalcantara/dotnet-webapi)|

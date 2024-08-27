@@ -1,0 +1,17 @@
+name: Publish .NET Project
+
+on:
+  workflow_call:
+    inputs:
+      working_directory:
+        required: true
+        type: string
+
+jobs:
+  publish-dotnet:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Publish the project
+      run: dotnet publish --configuration Release --output ./publish
+      working-directory: ${{ inputs.working_directory }}

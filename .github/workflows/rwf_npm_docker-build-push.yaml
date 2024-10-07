@@ -1,0 +1,58 @@
+name: Npm build / Docker build and push
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      environment_input:
+        description: ""
+        required: true
+        type: string
+      dockerfilePath_input:
+        description: "caminho do dockerfile"
+        required: true
+        type: string
+      buildcontext_input:
+        description: "caminho do build"
+        required: true
+        type: string
+      push_image_input:
+        description: "push image?"
+        required: false
+        type: boolean
+        default: false
+      node_version_input:
+        description: "versão do nodejs"
+        required: false
+        type: string
+        default: latest
+
+jobs:
+  build_image:
+    name: Build and push Docker image
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment_input }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4.1.7
+
+    - name: Setup Node
+      uses: actions/setup-node@v4.0.3
+      with:
+        node-version: ${{ inputs.node_version_input }}
+
+    - name: npm Install
+      run: |
+        npm cache clean --force
+        npm install
+
+    - name: Build
+      run: |
+        npm run build${{ vars.ENVIRONMENT_BUILD }}
+
+    - name: Azure Login
+      uses: azure/login@v2.1.0
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+

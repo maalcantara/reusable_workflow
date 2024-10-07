@@ -1,0 +1,32 @@
+name: Set Environment
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    outputs:
+      set_env:
+        description: "Output com o valor referente ao environment"
+        value: "${{ jobs.set_env.outputs.deploy_env }}"
+
+jobs:
+  set-env:
+    name: Set Environment
+    runs-on: ubuntu-latest
+    outputs:
+      deploy_env: ${{ steps.setoutput.outputs.deploy_env }}
+    steps:
+    - name: Set Environment
+      id: setoutput
+      # validação de branch e envs selecionados pra triggar a pipe
+      run: |
+        branch_name=${GITHUB_REF#refs/heads/}
+        echo $branch_name
+        if [ "$branch_name" == "main" ] || [ "$branch_name" == "master" ] || [ "$branch_name" == "feature/devops" ]; then
+          echo "deploy_env=production" >> $GITHUB_OUTPUT
+        elif [ "branch_name" == "qa" ]; then
+          echo "deploy_env=qa" >> $GITHUB_OUTPUT
+        elif [ "branch_name" == "stage" ]; then
+          echo "deploy_env=staging" >> $GITHUB_OUTPUT
+        else
+          echo "deploy_env=development" >> $GITHUB_OUTPUT
+        fi 

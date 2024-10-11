@@ -1,0 +1,52 @@
+name: CI/CD Pipeline
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+    paths:
+      - ".github/workflows/main.yaml"
+
+permissions:
+  id-token: write
+  contents: read
+  actions: read
+
+jobs:
+  set-env:
+    name: ' '
+    uses: gjc-corp/DEVOPS/.github/workflows/rwf_set_environment.yml@main
+    
+  build_app:
+    name: ' '
+    needs: set-env
+    uses: gjc-corp/DEVOPS/.github/workflows/rwf_npm_docker-build-push.yaml@main
+    with:
+      environment_input: ${{ needs.set-env.outputs.set_env }}
+      dockerfilePath_input: Dockerfile
+      buildcontext_input: .
+      push_image_input: true
+      node_version_input: 11
+      cache_input: true
+    secrets: inherit
+    
+  deploy:
+    name: ' '
+    needs: [set-env,build_app]
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+    uses: gjc-corp/DEVOPS/.github/workflows/rwf_aks.yaml@main
+    with:
+      environment_input: ${{ needs.set-env.outputs.set_env }}
+    secrets: inherit
+
+  sonar:
+    name: ' '
+    needs: set-env
+    uses: gjc-corp/DEVOPS/.github/workflows/rwf_sonar_node.yaml@main
+    with:
+      environment_input: ${{ needs.set-env.outputs.set_env }}
+      node_version_input: 11
+    secrets: inherit

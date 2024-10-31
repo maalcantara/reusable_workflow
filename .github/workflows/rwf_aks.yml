@@ -1,0 +1,70 @@
+name: AKS
+on:
+  workflow_dispatch:
+  workflow_call:
+      inputs:
+        environment_input:
+          description: ""
+          required: true
+          type: string
+        secret_input:
+          description: ""
+          required: false
+          type: boolean
+          default: false
+
+jobs:
+  aks-rollout:
+    name: AKS Apply
+    environment: ${{ inputs.environment_input }}
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code 
+        uses: actions/checkout@v4.1.7
+        with:
+          sparse-checkout: |
+            .github
+
+      - name: Get the tag name
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ] && [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          else
+            echo "TAG_NAME=${{ github.run_number }}" >> $GITHUB_ENV
+          fi
+
+      - name: Azure login
+        id: login
+        uses: azure/login@v2.1.0
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          allow-no-subscriptions: true
+  
+      - name: Set Subscription
+        run: |
+          az account set --subscription 52c52ce6-568f-47ae-84c2-d2acf3a8030c
+  
+      - name: Set up kubelogin for non-interactive login
+        uses: azure/use-kubelogin@v1
+        with:
+          kubelogin-version: 'v0.0.25'
+
+      - name: Set AKS context
+        id: set-context
+        uses: azure/aks-set-context@v4.0.1
+        with:
+          resource-group: ${{ secrets.AKS_RESOURCE_GROUP }}
+          cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
+          admin: 'false'
+          use-kubelogin: 'true'
+
+      - name: Substitute SECRET
+        if: ${{ inputs.secret_input }} # Se true, rodar a substituição da secret
+        run: |
+          sed -i 's|${ID-SECRET}|${{ secrets.AKV_APP_ID_PRD }}|g' .github/manifests/${{ vars.ENVIRONMENT_NAME }}/deployment.yaml
+

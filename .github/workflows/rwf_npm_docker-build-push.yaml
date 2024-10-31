@@ -26,33 +26,105 @@ on:
         required: false
         type: string
         default: latest
+      cache_input:
+        description: ""
+        required: false
+        type: boolean
+        default: false
+      runs-on_input:
+        description: ""
+        required: false
+        type: string
+        default: ubuntu-latest
 
 jobs:
   build_image:
     name: Build and push Docker image
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on_input }}
     environment: ${{ inputs.environment_input }}
 
     steps:
     - name: Checkout
       uses: actions/checkout@v4.1.7
 
-    - name: Setup Node
+    - name: Get the tag name
+      run: |
+        if [ "${{ github.ref_type }}" = "tag" ] && [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+        else
+            echo "TAG_NAME=${{ github.run_number }}" >> $GITHUB_ENV
+        fi
+
+    - name: Get npm cache directory
+      if: ${{ inputs.cache_input }}
+      id: npm-cache-dir
+      shell: bash
+      run: echo "dir=$(npm config get cache)" >> $GITHUB_OUTPUT
+
+    - name: Cache node modules
+      if: ${{ inputs.cache_input }}
+      id: cache-npm
+      uses: actions/cache@v3
+      with:
+        path: ${{ steps.npm-cache-dir.outputs.dir }}
+        key: ${{ runner.os }}-build-${{ inputs.environment_input }}-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-build-${{ inputs.environment_input }}-${{ hashFiles('**/package-lock.json') }}
+          ${{ runner.os }}-build-${{ inputs.environment_input }}
+
+    - name: List the state of node modules
+      if: ${{ steps.cache-npm.outputs.cache-hit != 'true' && inputs.cache_input }}
+      continue-on-error: true
+      run: npm list
+
+    - name: Setup Node ${{ inputs.node_version_input }}
       uses: actions/setup-node@v4.0.3
       with:
         node-version: ${{ inputs.node_version_input }}
+        cache: 'npm'
+      continue-on-error: true
+
+    - name: Cache Verify
+      if: ${{ inputs.cache_input }}
+      run: |
+        npm config get cache
+        npm cache verify
 
     - name: npm Install
       run: |
-        npm cache clean --force
-        npm install
+        npm install --verbose
 
     - name: Build
       run: |
-        npm run build${{ vars.ENVIRONMENT_BUILD }}
+        npm run build${{ inputs.environment_input }}
 
     - name: Azure Login
       uses: azure/login@v2.1.0
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
+        allow-no-subscriptions: true
 
+    - name: ACR Login
+      run: |
+        az acr login --name ${{ secrets.ACR_ID }}
+
+    - name: Build and push Docker image for non-production
+      uses: docker/build-push-action@v6.7.0
+      with:
+        context: ${{ inputs.buildcontext_input }}
+        file: ${{ inputs.dockerfilePath_input }}
+        push: ${{ inputs.push_image_input }}
+        tags: |
+          ${{ secrets.ACR_SERVER }}/${{ github.event.repository.name }}/${{ inputs.environment_input }}:latest
+      if: ${{ inputs.environment_input != 'prd' }}
+
+    - name: Build and push Docker image for production
+      uses: docker/build-push-action@v6.7.0
+      with:
+        context: ${{ inputs.buildcontext_input }}
+        file: ${{ inputs.dockerfilePath_input }}
+        push: ${{ inputs.push_image_input }}
+        tags: |
+          ${{ secrets.ACR_SERVER }}/${{ github.event.repository.name }}/${{ inputs.environment_input }}:latest
+          ${{ secrets.ACR_SERVER }}/${{ github.event.repository.name }}/${{ inputs.environment_input }}:${{ env.TAG_NAME }}
+      if: ${{ inputs.environment_input == 'prd' }}

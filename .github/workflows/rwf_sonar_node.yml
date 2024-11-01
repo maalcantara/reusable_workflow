@@ -1,0 +1,56 @@
+name: Sonar - Node
+on:
+  workflow_dispatch:
+  workflow_call:
+      inputs:
+        node_version_input:
+          description: ""
+          required: false
+          type: string
+          default: latest
+        environment_input:
+          description: ""
+          required: true
+          type: string
+          
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+  NEXUS_USER: ${{ secrets.NEXUS_REPO_USER }}
+  NEXUS_PASSWORD: ${{ secrets.NEXUS_REPO_PASS }}
+jobs:
+  sonar:
+    name: Run Sonar Node
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment_input }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4.1.7
+        with:
+          fetch-depth: 0
+          
+      - name: Setup Node ${{ inputs.node_version_input }}
+        uses: actions/setup-node@v4.0.3
+        with:
+          node-version: ${{ inputs.node_version_input }}
+          
+      - name: NPM clean
+        if: false
+        run: |
+          npm cache clean --force
+          
+      - name: NPM Install
+        run: |
+          npm install
+          
+      - name: Build
+        run: |
+          npm run build:${{ vars.ENVIRONMENT_BUILD }}
+
+      - name: Run SonarQube Scan
+        uses: sonarsource/sonarqube-scan-action@v2.1.0
+        env:
+          args: >
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}

@@ -19,14 +19,27 @@ jobs:
       id: setoutput
       # validação de branch e envs selecionados pra triggar a pipe
       run: |
-        branch_name=${GITHUB_REF#refs/heads/}
-        echo $branch_name
-        if [ "$branch_name" == "main" ] || [ "$branch_name" == "master" ] || [ "$branch_name" == "feature/devops" ]; then
+        if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref_type }}" = "tag" ]; then
+          branch_name=${{ github.event.base_ref }}
+        elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.ref_type }}" != "tag" ]; then
+          branch_name=${{ github.event.ref }}
+        else
+          echo "Invalid event or reference type. Exiting."
+          exit 1
+        fi
+        
+        echo "Branch name: $branch_name"
+        
+        if [ "$branch_name" = "refs/heads/main" ] || [ "$branch_name" = "refs/heads/master" ] || [ "$branch_name" = "refs/heads/feature/devops" ]; then
           echo "deploy_env=production" >> $GITHUB_OUTPUT
-        elif [ "branch_name" == "qa" ]; then
-          echo "deploy_env=qa" >> $GITHUB_OUTPUT
-        elif [ "branch_name" == "stage" ]; then
+        elif [ "$branch_name" = "refs/heads/qa" ]; then
+          echo "deploy_env=hml" >> $GITHUB_OUTPUT
+        elif [ "$branch_name" = "refs/heads/stage" ]; then
           echo "deploy_env=staging" >> $GITHUB_OUTPUT
         else
           echo "deploy_env=development" >> $GITHUB_OUTPUT
-        fi 
+        fi
+
+        echo "Env name: $deploy_env"
+
+# Não suporta trigger manual de tags.

@@ -1,0 +1,52 @@
+name: CI/CD Pipeline
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+permissions:
+  id-token: write
+  contents: read
+  actions: read
+
+jobs:  
+  set-env:
+    name: ' '
+    uses: maalcantara/reusable_workflow/.github/workflows/rwf_set_environment.yml@main
+    
+  build_app:
+    name: ' '
+    needs: set-env
+    uses: maalcantara/reusable_workflow/.github/workflows/rwf_docker-build-app-push.yaml@main
+    with:
+      environment_input: ${{ needs.set-env.outputs.set_env }}
+      dockerfilePath_input: Dockerfile
+      buildcontext_input: .
+      push_image_input: true
+    secrets: inherit
+    
+  deploy:
+    name: ' '
+    needs: [set-env,build_app]
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+    uses: maalcantara/reusable_workflow/.github/workflows/rwf_aks.yaml@main
+    with:
+      environment_input: ${{ needs.set-env.outputs.set_env }}
+    secrets: inherit
+
+  sonar:
+    name: ' '
+    needs: [set-env]
+    uses: maalcantara/reusable_workflow/.github/workflows/rwf_sonar_yarn.yaml@main
+    with:
+      node_version_input: 13
+      ci_input: false
+      yarn_ref_input: true
+      yarn_install_input: yarn install
+      yarn_build_input: yarn build-$ENVIRONMENT_BUILD
+      environment_input: ${{ needs.set-env.outputs.set_env }}
+    secrets: inherit

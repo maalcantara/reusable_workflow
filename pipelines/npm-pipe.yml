@@ -15,12 +15,12 @@ permissions:
 jobs:
   set-env:
     name: ' '
-    uses: gjc-corp/DEVOPS/.github/workflows/rwf_set_environment.yml@main
+    uses: maalcantara/reusable_workflow/.github/workflows/rwf_set_environment.yml@main
     
   build_app:
     name: ' '
     needs: set-env
-    uses: gjc-corp/DEVOPS/.github/workflows/rwf_npm_docker-build-push.yaml@main
+    uses: maalcantara/reusable_workflow/.github/workflows/rwf_npm_docker-build-push.yaml@main
     with:
       environment_input: ${{ needs.set-env.outputs.set_env }}
       dockerfilePath_input: Dockerfile
@@ -37,7 +37,7 @@ jobs:
       id-token: write
       contents: read
       actions: read
-    uses: gjc-corp/DEVOPS/.github/workflows/rwf_aks.yaml@main
+    uses: maalcantara/reusable_workflow/.github/workflows/rwf_aks.yaml@main
     with:
       environment_input: ${{ needs.set-env.outputs.set_env }}
     secrets: inherit
@@ -45,7 +45,7 @@ jobs:
   sonar:
     name: ' '
     needs: set-env
-    uses: gjc-corp/DEVOPS/.github/workflows/rwf_sonar_node.yaml@main
+    uses: maalcantara/reusable_workflow/.github/workflows/rwf_sonar_node.yaml@main
     with:
       environment_input: ${{ needs.set-env.outputs.set_env }}
       node_version_input: 11

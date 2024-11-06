@@ -13,12 +13,12 @@ permissions:
 jobs:
   set-env:
     name: ' '
-    uses: gjc-corp/DEVOPS/.github/workflows/rwf_set_environment.yml@main
+    uses: maalcantara/reusable_workflow/.github/workflows/rwf_set_environment.yml@main
 
   build_app:
     name: ' '
     needs: set-env
-    uses: gjc-corp/DEVOPS/.github/workflows/rwf_build_java.yaml@main
+    uses: maalcantara/reusable_workflow/.github/workflows/rwf_build_java.yaml@main
     with:
       maven_cli_opts_input: "-s .m2/settings.xml --batch-mode --update-snapshots"
       artifact_path_input: target/crm-admin-service.jar
@@ -28,7 +28,7 @@ jobs:
 
   sonar:
     name: ' '
-    uses: gjc-corp/DEVOPS/.github/workflows/rwf_sonar_maven.yaml@main
+    uses: maalcantara/reusable_workflow/.github/workflows/rwf_sonar_maven.yaml@main
     with:
       maven_cli_opts_input: "-s .m2/settings.xml --batch-mode --update-snapshots"
       java_version_input: 13
@@ -39,7 +39,7 @@ jobs:
   build_image:
     name: ' '
     needs: [set-env,build_app]
-    uses: gjc-corp/DEVOPS/.github/workflows/rwf_docker-build-push.yaml@main
+    uses: maalcantara/reusable_workflow/.github/workflows/rwf_docker-build-push.yaml@main
     with:
       environment_input: ${{ needs.set-env.outputs.set_env }}
       dockerfilePath_input: Dockerfile
@@ -55,7 +55,7 @@ jobs:
       id-token: write
       contents: read
       actions: read
-    uses: gjc-corp/DEVOPS/.github/workflows/rwf_aks.yaml@main
+    uses: maalcantara/reusable_workflow/.github/workflows/rwf_aks.yaml@main
     with:
       environment_input: ${{ needs.set-env.outputs.set_env }}
       secret_input: true

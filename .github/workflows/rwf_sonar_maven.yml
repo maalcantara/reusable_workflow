@@ -1,0 +1,84 @@
+name: Sonar - Maven
+on:
+  workflow_dispatch:
+  workflow_call:
+      inputs:
+        maven_cli_opts_input:
+          description: ""
+          required: true
+          type: string
+        java_version_input:
+          required: false
+          type: string
+          default: "17"
+        java_distribution_input:
+          required: false
+          type: string
+          default: 'adopt'
+        sonar_version_input:
+          description: "Versão do pluigin do sonar."
+          required: false
+          type: string
+          default: '4.0.0.4121'
+          # 3.2
+        jacoco_teste_input:
+          required: false
+          type: boolean
+          default: false
+          
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+  MAVEN_REPO_USER: ${{ secrets.NEXUS_REPO_USER }}
+  MAVEN_REPO_PASS: ${{ secrets.NEXUS_REPO_PASS }}
+  MAVEN_ALL_REPO_URL: ${{ vars.NEXUS_REPO_URL }}
+jobs:
+  sonar:
+    name: Run Sonar Java
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.1.7
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK ${{ inputs.java_version_input }}
+        uses: actions/setup-java@v4.2.2
+        with:
+          java-version: ${{ inputs.java_version_input }}
+          distribution: ${{ inputs.java_distribution_input }}
+
+      # - name: Cache SonarQube packages
+      #   uses: actions/cache@v4.0.2
+      #   with:
+      #     path: ~/.sonar/cache
+      #     key: ${{ runner.os }}-sonar
+      #     restore-keys: ${{ runner.os }}-sonar
+
+      # - name: Cache Maven packages
+      #   uses: actions/cache@v4.0.2
+      #   with:
+      #     path: ~/.m2
+      #     key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+      #     restore-keys: ${{ runner.os }}-m2
+
+      - name: Build and analyze
+        run: |
+          mvn ${{ inputs.maven_cli_opts_input }} clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:${{ inputs.sonar_version_input }}:sonar -DskipTests -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }} -Dsonar.host.url=${{ vars.SONAR_HOST_URL }} -Dsonar.token=${{ secrets.SONAR_TOKEN }} -X -e
+        # mvn -X -e clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:${{ inputs.sonar_version_input }}:sonar -DskipTests -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }} -Dsonar.host.url=${{ vars.SONAR_HOST_URL }} -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+
+      - name: Jacoco
+        run: |
+          "[ -f target/site/jacoco/index.html ] && (grep -hs -o 'Total[^%]*%' target/site/jacoco/index.html | sed 's/<.*>//' | sed -e 's/Total/Jacoco-Test-Coverage:/g') || echo 'Jacoco unit test report not found.'"
+          "[ -f target/site/jacoco-it/index.html ] && (grep -hs -o 'Total[^%]*%' target/site/jacoco-it/index.html | sed 's/<.*>//' | sed -e 's/Total/Jacoco-IT-Test-Coverage:/g') || echo 'Jacoco integration test report not found.'"
+        if: ${{ inputs.jacoco_teste_input }}
+        
+        # mvn clean install ${{ inputs.maven_cli_opts_input }} 
+        # mvn org.sonarsource.scanner.maven:sonar-maven-plugin:${{ inputs.sonar_version_input }}:sonar -DskipTests -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }} -Dsonar.host.url=${{ vars.SONAR_HOST_URL }} -Dsonar.token=${{ secrets.GITHUB_TOKEN }} -X -e
+        # mvn ${{ inputs.maven_cli_opts_input }} verify org.sonarsource.scanner.maven:sonar-maven-plugin:3.0.2:sonar -X -DskipTests -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+
+        # mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -X
+        #   mvn clean install
+        #   mvn verify org.sonarsource.scanner.maven:sonar-maven-plugin:3.7.0.1746:sonar -X
+        # # mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -X
+        # # org.sonarsource.scanner.maven:sonar-maven-plugin:3.7.0.1746:sonar

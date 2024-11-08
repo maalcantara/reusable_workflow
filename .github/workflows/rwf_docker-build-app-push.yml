@@ -1,0 +1,81 @@
+name: Docker build and push
+on:
+  workflow_dispatch:
+  workflow_call:
+      inputs:
+        environment_input:
+          description: ""
+          required: true
+          type: string
+        dockerfilePath_input:
+          description: "caminho do Dockerfile"
+          required: true
+          type: string
+        buildcontext_input:
+          description: "caminho do build"
+          required: true
+          type: string
+        push_image_input:
+          description: "Push image?"
+          required: false
+          type: boolean
+          default: false
+
+jobs:
+    build_image:
+      name: Docker Build app and build/push Docker image
+      runs-on: ubuntu-latest
+      environment: ${{ inputs.environment_input }}
+
+      steps:
+      - name: Checkout
+        uses: actions/checkout@v4.1.7
+
+      - name: Get the tag name
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ] && [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          else
+            echo "TAG_NAME=${{ github.run_number }}" >> $GITHUB_ENV
+          fi
+
+      - name: Azure Login
+        uses: azure/login@v2.1.0
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          allow-no-subscriptions: true
+
+      - name: ACR Login
+        run: |
+          az acr login --name ${{ secrets.ACR_ID }}
+
+      - name: Build and push Docker image ${{ vars.ENVIRONMENT_NAME }}
+        uses: docker/build-push-action@v6.7.0
+        env:
+          DOCKER_BUILD_SUMMARY: false
+        with:
+          context: ${{ inputs.buildcontext_input }}
+          file: ${{ inputs.dockerfilePath_input }}
+          push: ${{ inputs.push_image_input }}
+          build-args: |
+            PROJECT_ENVIRONMENT=${{ vars.ENVIRONMENT_BUILD }}
+            SLUG=${{ vars.ENVIRONMENT_BUILD }}
+          tags: |
+            ${{ secrets.ACR_SERVER }}/${{ github.event.repository.name }}/${{ vars.ENVIRONMENT_NAME }}:latest
+        if: ${{ vars.ENVIRONMENT_NAME && vars.ENVIRONMENT_NAME != 'prd' }}
+
+      - name: Build and push Docker image ${{ vars.ENVIRONMENT_NAME }}
+        uses: docker/build-push-action@v6.7.0
+        env:
+          DOCKER_BUILD_SUMMARY: false
+        with:
+          context: ${{ inputs.buildcontext_input }}
+          file: ${{ inputs.dockerfilePath_input }}
+          push: ${{ inputs.push_image_input }}
+          build-args: |
+            PROJECT_ENVIRONMENT=${{ vars.ENVIRONMENT_BUILD }}
+            SLUG=${{ vars.ENVIRONMENT_BUILD }}
+          tags: |
+            ${{ secrets.ACR_SERVER }}/${{ github.event.repository.name }}/${{ vars.ENVIRONMENT_NAME }}:latest
+            ${{ secrets.ACR_SERVER }}/${{ github.event.repository.name }}/${{ vars.ENVIRONMENT_NAME }}:${{ env.TAG_NAME }}
+        if: ${{ vars.ENVIRONMENT_NAME && vars.ENVIRONMENT_NAME == 'prd' }}

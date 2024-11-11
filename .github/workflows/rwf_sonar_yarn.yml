@@ -1,0 +1,102 @@
+name: Sonar - Yarn
+on:
+  workflow_dispatch:
+  # push:
+  #   paths:
+  #     - '.github/workflows/rwf_sonar.yaml'
+  workflow_call:
+      inputs:
+        environment_input:
+          description: ""
+          required: false
+          type: string
+          default: ""
+        node_version_input:
+          description: ""
+          required: true
+          type: string
+          default: "17"
+# Install e build personalizado
+        yarn_ref_input:
+          description: "Comando yarn personalizado?"
+          required: false
+          type: boolean
+          default: false
+        yarn_install_input:
+          description: ""
+          required: false
+          type: string
+        yarn_build_input:
+          description: ""
+          required: false
+          type: string
+        yarn_config_input:
+          description: ""
+          required: false
+          type: string
+          default: ''
+# Renomear .env
+        file_env_rename_input:
+          description: ""
+          required: false
+          type: boolean
+          default: false
+# CI
+        ci_input:
+          description: ""
+          required: false
+          type: boolean
+          default: true
+# Build
+        build_app_input:
+          description: ""
+          required: false
+          type: boolean
+          default: true
+      
+env:
+  NEXUS_USER: ${{ secrets.NEXUS_REPO_USER }}
+  NEXUS_PASSWORD: ${{ secrets.NEXUS_REPO_PASS }}
+  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+  CI: ${{ inputs.ci_input }}
+jobs:
+  sonar:
+    name: Run Sonar Yarn
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment_input }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4.1.7
+        with:
+          fetch-depth: 0
+          
+      - name: Setup Node ${{ inputs.node_version_input }}
+        uses: actions/setup-node@v4.0.3
+        with:
+          node-version: ${{ inputs.node_version_input }}
+
+      - name: Build and Install
+        if: ${{ inputs.yarn_ref_input == false && inputs.build_app_input }}
+        run: |
+          yarn install --frozen-lockfile
+          yarn build
+        env:
+          PROJECT_ENVIRONMENT: ${{ vars.ENVIRONMENT_BUILD }}
+          
+      - name: Build and Install - Personalizado ${{ vars.ENVIRONMENT_BUILD }}
+        if: ${{ inputs.yarn_ref_input && inputs.build_app_input }}
+        run: |
+          ${{ inputs.yarn_confg_input }}
+          ${{ inputs.yarn_install_input }}
+          ${{ inputs.yarn_build_input }}
+        env:
+          ENVIRONMENT_BUILD: ${{ vars.ENVIRONMENT_BUILD }}
+          PROJECT_ENVIRONMENT: ${{ vars.ENVIRONMENT_BUILD }}
+
+      - name: Run SonarQube Scan
+        uses: sonarsource/sonarqube-scan-action@v3.0.0
+        env:
+          args: >
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
